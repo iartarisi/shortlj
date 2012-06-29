@@ -11,5 +11,6 @@
 
 (deftest test_int_to_base36
   (is (= (int_to_base36 0) "0"))
+  (is (= (int_to_base36 2) "2"))
   (is (= (int_to_base36 36) "10"))
   (is (= (int_to_base36 3600) "2s0")))

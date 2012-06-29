@@ -10,11 +10,9 @@
                     (iterate inc 0)))))
                 
 (defn int_to_base36 [i]
-  (if (= i 0)
-    "0"
-    (reduce str ((fn foo [i factor]
-                   (let [j (expt 36 factor)]
-                     (if (>= factor 0)
-                       (conj (foo (mod i j) (dec factor))
-                             (nth digits (quot i j)))
-                       '()))) i (find-factor i)))))
+  ((fn foo [i factor]
+     (let [j (expt 36 factor)]
+       (if (>= factor 0)
+         (str (nth digits (quot i j))
+              (foo (mod i j) (dec factor))))))
+   i (find-factor i)))
