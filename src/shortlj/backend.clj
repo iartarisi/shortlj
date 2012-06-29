@@ -16,9 +16,11 @@
 ;; along with Shortlj.  If not, see <http://www.gnu.org/licenses/>.
 
 (ns shortlj.backend
+  (:require [redis.core :as redis])
   (:use [clojure.math.numeric-tower :only (expt)]))
 
 (def digits "0123456789abcdefghijklmnopqrstuvwxyz")
+(def rserver {:host "127.0.0.1" :db 1})
 
 (defn find-factor [i]
   (if (= i 0)
@@ -33,3 +35,15 @@
          (str (nth digits (quot i j))
               (foo (mod i j) (dec factor))))))
    i (find-factor i)))
+
+(defn shorten
+  "Shorten a given URL, returning the unique id of that URL"
+  [url]
+  (redis/with-server rserver
+    (let [existing-url (redis/get (str "urls|" url))]
+      (if existing-url
+        existing-url
+        (let [short (int_to_base36 (int (redis/incr "url_counter")))]
+          (redis/set (str "urls|" url) short)
+          (redis/set (str "shorts|" short) url)
+          (str short))))))
