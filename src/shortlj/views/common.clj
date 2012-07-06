@@ -5,8 +5,7 @@
 (defpartial layout [& content]
             (html5
               [:head
-               [:title "shortlj"]
-               (include-css "/css/reset.css")]
+               [:title "Shortlj!"]
+               (include-css "/css/style.css")]
               [:body
-               [:div#wrapper
-                content]]))
+               content]))
