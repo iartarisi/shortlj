@@ -16,9 +16,20 @@
 ;; along with Shortlj.  If not, see <http://www.gnu.org/licenses/>.
 
 (ns shortlj.views_test
+  (:require [redis.core :as redis])
   (:use clojure.test)
   (:use noir.util.test)
   (:use shortlj.views.index))
+
+(def test-server {:host "127.0.0.1" :db 1})
+(def test-url "http://doesnt.exist")
+
+(use-fixtures :each (fn [f]
+                      ;; setUp
+                      (redis/with-server test-server
+                        (redis/flushdb))
+                      ;; run test
+                      (f)))
 
 (deftest test_expand_url_not_found
   (has-status (send-request "/notfound") 404))
@@ -30,3 +41,14 @@
                    "Oh, Hai!"))
     (is (.contains (get response :body)
                    "<form action=\"/\" id=\"shorten\" method=\"POST\""))))
+
+(deftest test_shorten_doesnt_exist_returns_valid
+  (redis/with-server test-server
+    (let [response (send-request [:post "/"] {:url test-url})]
+      (has-status response 200)
+      (is (.contains (get response :body)
+                     (str "<a href=\"" test-url "\" id=\"original\">"
+                          test-url "</a>")))
+      (is (.contains (get response :body)
+                     (str "<a href=\"" (str base-url 1) "\" id=\"shortened\">"
+                          (str base-url 1) "</a>"))))))
