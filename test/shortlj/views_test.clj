@@ -32,7 +32,7 @@
                       (f)))
 
 (deftest test_expand_url_not_found
-  (has-status (send-request "/notfound") 404))
+  (has-status (send-request "/not/found") 404))
 
 (deftest test_index_get_ok
   (let [response (send-request "/")]
@@ -51,3 +51,16 @@
       (is (.contains (get response :body)
                      (str "<a href=\"" (str base-url 1) "\" id=\"shortened\">"
                           (str base-url 1) "</a>")))))
+
+(deftest test_expand_doesnt_exist
+  (let [response (send-request "/doesntexist")]
+    (has-status response 200)
+    (is (.contains (get response :body)
+                   "Couldn't find a link"))
+    (is (.contains (get response :body)
+                   "/doesntexist"))))
+
+(deftest test_expand_exists
+  (wcar (car/set "shorts|42" test-url))
+  (let [response (send-request "/42")]
+    (has-status response 302)))

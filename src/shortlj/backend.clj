@@ -48,3 +48,8 @@
         (wcar (car/set (str "urls|" url) short)
               (car/set (str "shorts|" short) url))
         (str short)))))
+
+(defn expand
+  "Expand a URL that was already stored in the database"
+  [short]
+  (wcar (car/get (str "shorts|" short))))
