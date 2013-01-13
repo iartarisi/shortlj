@@ -16,11 +16,12 @@
 ;; along with Shortlj.  If not, see <http://www.gnu.org/licenses/>.
 
 (ns shortlj.backend_test
-  (:require [redis.core :as redis])
+  (:require [taoensso.carmine :as car])
   (:use clojure.test)
-  (:use shortlj.backend))
+  (:use [shortlj.backend :only [find-factor int_to_base36 shorten]]))
 
-(def test-server {:host "127.0.0.1" :db 1})
+(defmacro wcar [& body]
+  `(car/with-conn (car/make-conn-pool) (car/make-conn-spec :db 1) ~@body))
 (def test-url "http://doesnt.exist")
 
 (deftest test_find_factor
@@ -38,37 +39,30 @@
 
 (use-fixtures :each (fn [f]
                       ;; setUp
-                      (redis/with-server test-server
-                        (redis/flushdb))
+                      (wcar (car/flushdb))
                       ;; run test
                       (f)))
 
 (deftest test_shorten_already_exists
-  (redis/with-server test-server
-    (redis/set (str "urls|" test-url) "a1f")
-    (redis/get "urls|http://doesnt.exist")
-    (is (= "a1f" (shorten test-url)))))
+  (wcar (car/set (str "urls|" test-url) "a1f"))
+  (is (= "a1f" (shorten test-url))))
 
 (deftest test_shorten_doesnt_exist_returns_valid
-  (redis/with-server test-server
-    (is (nil? (redis/get (str "urls|" test-url))))
-    (is (= "1" (shorten test-url)))))
+  (is (nil? (wcar (car/get (str "urls|" test-url)))))
+  (is (= "1" (shorten test-url))))
 
 (deftest test_shorten_doesnt_exist_returns_next
-  (redis/with-server test-server
-    (redis/set "url_counter" 51)
-    (is (= "1g" (shorten test-url)))))
+  (wcar (car/set "url_counter" 51))
+  (is (= "1g" (shorten test-url))))
 
 (deftest test_shorten_doesnt_exist_creates_new
-  (redis/with-server test-server
-    (is (nil? (redis/get (str "urls|" test-url))))
-    (shorten test-url)
-    (is (= "1" (redis/get (str "urls|" test-url))))
-    (is (= test-url (redis/get "shorts|1")))))
+  (is (nil? (wcar (car/get (str "urls|" test-url)))))
+  (shorten test-url)
+  (is (= "1" (wcar (car/get (str "urls|" test-url)))))
+  (is (= test-url (wcar (car/get "shorts|1")))))
 
 (deftest test_shorten_doesnt_exist_create_new_next
-  (redis/with-server test-server
-    (redis/set "url_counter" 51)
-    (shorten test-url)
-    (is (= "1g" (redis/get (str "urls|" test-url))))
-    (is (= test-url (redis/get "shorts|1g")))))
+  (wcar (car/set "url_counter" 51))
+  (wcar (shorten test-url))
+  (is (= "1g" (wcar (car/get (str "urls|" test-url)))))
+  (is (= test-url (wcar (car/get "shorts|1g")))))

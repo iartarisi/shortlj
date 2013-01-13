@@ -16,11 +16,13 @@
 ;; along with Shortlj.  If not, see <http://www.gnu.org/licenses/>.
 
 (ns shortlj.backend
-  (:require [redis.core :as redis])
+  (:require [taoensso.carmine :as car])
   (:use [clojure.math.numeric-tower :only (expt)]))
 
 (def digits "0123456789abcdefghijklmnopqrstuvwxyz")
-(def rserver {:host "127.0.0.1" :db 1})
+(def redis-server )
+(defmacro wcar [& body]
+  `(car/with-conn (car/make-conn-pool) (car/make-conn-spec :db 1) ~@body))
 
 (defn find-factor [i]
   (if (= i 0)
@@ -39,11 +41,10 @@
 (defn shorten
   "Shorten a given URL, returning the unique id of that URL"
   [url]
-  (redis/with-server rserver
-    (let [existing-url (redis/get (str "urls|" url))]
-      (if existing-url
-        existing-url
-        (let [short (int_to_base36 (int (redis/incr "url_counter")))]
-          (redis/set (str "urls|" url) short)
-          (redis/set (str "shorts|" short) url)
-          (str short))))))
+  (let [existing-url (wcar (car/get (str "urls|" url)))]
+    (if existing-url
+      existing-url
+      (let [short (int_to_base36 (int (wcar (car/incr "url_counter"))))]
+        (wcar (car/set (str "urls|" url) short)
+              (car/set (str "shorts|" short) url))
+        (str short)))))

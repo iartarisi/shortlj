@@ -16,18 +16,18 @@
 ;; along with Shortlj.  If not, see <http://www.gnu.org/licenses/>.
 
 (ns shortlj.views_test
-  (:require [redis.core :as redis])
+  (:require [taoensso.carmine :as car])
   (:use clojure.test)
   (:use noir.util.test)
   (:use shortlj.views.index))
 
-(def test-server {:host "127.0.0.1" :db 1})
+(defmacro wcar [& body]
+  `(car/with-conn (car/make-conn-pool) (car/make-conn-spec :db 1) ~@body))
 (def test-url "http://doesnt.exist")
 
 (use-fixtures :each (fn [f]
                       ;; setUp
-                      (redis/with-server test-server
-                        (redis/flushdb))
+                      (wcar (car/flushdb))
                       ;; run test
                       (f)))
 
@@ -43,7 +43,6 @@
                    "<form action=\"/\" id=\"shorten\" method=\"POST\""))))
 
 (deftest test_shorten_doesnt_exist_returns_valid
-  (redis/with-server test-server
     (let [response (send-request [:post "/"] {:url test-url})]
       (has-status response 200)
       (is (.contains (get response :body)
@@ -51,4 +50,4 @@
                           test-url "</a>")))
       (is (.contains (get response :body)
                      (str "<a href=\"" (str base-url 1) "\" id=\"shortened\">"
-                          (str base-url 1) "</a>"))))))
+                          (str base-url 1) "</a>")))))
